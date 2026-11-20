@@ -1,5 +1,5 @@
 package com.mailook.global;
 
-public class WeatherMoment {
+public enum WeatherMoment {
 
 }
