@@ -24,10 +24,10 @@ jobs:
         uses: actions/checkout@v4
 
       # 3. Java 환경 세팅 (프로젝트 Java 버전에 맞게 17 또는 21로 수정)
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       # 4. Gradle 실행 권한 부여 (리눅스 환경 필수!)
