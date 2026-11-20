@@ -1,0 +1,242 @@
+# AGENTS.md — mAILOOK 백엔드
+
+이 파일은 mAILOOK **백엔드**에서 작업하는 코딩 에이전트(Codex 등)가 먼저 읽는 안내서입니다. 프론트 규칙은 프론트 쪽 AGENTS.md에 따로 있습니다.
+설계의 기준 문서는 Notion(요구사항 정의서, ERD, API 명세 초안, 계층구조 초안)이고, 이 파일은 그 요약입니다. 둘이 다르면 Notion을 따르고, 이 파일을 고쳐 주세요.
+
+## 0. 브랜치 규칙 (작업 전에 반드시 확인)
+
+### 작업 시작 전 확인 순서
+
+1. **현재 브랜치를 먼저 확인합니다** (`git branch --show-current`).
+2. **작업 브랜치(`타입/작업-내용`, 예: `feat/closet-crud`)에 있으면** 브랜치를 새로 만들지 않고 그 브랜치에서 바로 작업합니다.
+3. **`main` 또는 `develop`에 있으면** 지시받은 작업에 맞는 작업 브랜치를 새로 만든 뒤 작업합니다.
+   - 이때 지시가 불분명해서 무엇을 만들거나 고칠지, 어떤 타입(feat/fix/...)인지 정할 수 없으면 **경고 메시지만 남기고 아무 작업도 하지 않습니다.** 브랜치도 만들지 않고, 파일도 고치지 않습니다.
+   - 경고 예: `⚠️ 지시가 불분명해 작업하지 않았습니다. 무엇을 바꿔야 하는지(대상 기능·화면·API)와 작업 종류(기능 추가/버그 수정 등)를 알려 주세요.`
+   - 작업 브랜치는 항상 **최신 develop에서** 만듭니다. main에 있었다면 develop으로 옮긴 뒤 만듭니다.
+   ```bash
+   git switch develop
+   git pull origin develop
+   git switch -c 타입/작업-내용
+   ```
+
+### 브랜치 구조
+
+| 브랜치 | 역할 | 규칙 |
+|---|---|---|
+| `main` | 최종 빌드·발표용 (기본 브랜치) | 직접 커밋·push 금지 |
+| `develop` | 개발 통합 브랜치 | 직접 커밋·push 금지 |
+| `타입/작업-내용` | 개인 작업 브랜치. develop에서 생성 | 작업 후 develop으로 PR |
+
+- 작업 브랜치 이름: `타입/작업-내용` (소문자, 단어는 하이픈). 예: `feat/closet-crud`, `fix/weather-cache-expire`, `design/home-layout`
+- **main과 develop에는 절대 직접 커밋하지 않습니다.** 합치는 것은 PR로만 합니다.
+
+### 타입
+
+| 타입 | 언제 |
+|---|---|
+| `feat` | 새로운 기능 추가 |
+| `fix` | 버그 수정 |
+| `refactor` | 코드 리팩토링 (기능 변화 없음) |
+| `design` | UI/UX 및 CSS 스타일링 변경 |
+| `chore` | 패키지 매니저, 빌드 설정 등 코드 외 변경 |
+
+### 커밋 메시지
+
+- 형식: `타입: 작업 내용` (예: `feat: 옷 등록 시 AI 분류 결과 저장`)
+- 한 커밋에는 한 가지 일만 담습니다.
+
+### PR
+
+- 작업 브랜치 → develop. develop → main은 최종 빌드 때만.
+- 제목: `[타입] 작업 내용` (타입은 대문자. 예: `[FEAT] 옷장 목록 카테고리 필터 구현`)
+- PR 하나에는 기능 하나만 담습니다.
+- 본문 템플릿:
+  ```markdown
+  ## 무엇을 했나요
+  - 한두 줄로 이 PR의 목적
+
+  ## 변경 사항
+  -
+
+  ## 확인한 것
+  - [ ] 로컬에서 실행 확인
+  - [ ] API 응답 확인 (Postman 등)
+  - [ ] 화면 확인 (UI 변경 시 스크린샷 첨부)
+
+  ## 리뷰 때 봐주세요
+  - 특히 확인이 필요한 부분이나 고민한 지점
+
+  ## 관련 이슈
+  - closes #
+  ```
+
+### 환경 변수 · 설정 파일
+
+- API 키, DB 비밀번호 같은 값은 코드에 쓰지 않습니다. `.env` 등 실제 값이 든 파일은 커밋하지 않습니다.
+- `build.gradle`이나 `application.properties`를 바꿨다면, 무엇을 왜 바꿨는지 작업 결과에 꼭 적어서 사용자가 팀에 공유할 수 있게 합니다.
+
+## 실행 명령
+
+- Gradle: `./gradlew build`, `./gradlew bootRun`
+- DB: Docker의 PostgreSQL(포트 5433, DB `mAILook`). 접속 정보는 환경변수로 받습니다.
+
+## 1. 프로젝트 한 줄 요약
+
+내 옷장 안에서, 오늘 날씨에 춥지도 덥지도 않은 옷차림을 추천하고, 저녁 체감 피드백으로 개인의 추위·더위 성향을 학습하는 서비스입니다.
+학습하는 것은 스타일이 아니라 "이 사람이 얼마나 춥고 덥게 느끼는지"입니다.
+
+핵심 흐름: 옷 등록(AI 분류) → 아침 추천 → "이걸로 입을게요"(착용 기록) → 저녁 피드백 → 성향 갱신 → 다음 추천에 반영
+
+## 2. 기술 스택
+
+- Java 21, Spring Boot, Spring AI 1.1(OpenAI), Spring Security, JWT
+- 데이터 접근: **MyBatis (Mapper 인터페이스 + XML)**. JPA를 쓰지 않습니다.
+- DB: PostgreSQL(Docker, 포트 5433), Redis(날씨 원본 캐시). pgvector는 P2에서만 씁니다.
+- 외부 API: 기상청 단기·중기예보, 카카오 지도(좌표·주소)
+- 프론트는 Next.js(JavaScript)이고, httpOnly 쿠키로 로그인 상태를 주고받습니다.
+
+## 3. 담당
+
+| 담당 | 도메인 |
+|---|---|
+| 전이레 | 공통 기반(Security·JWT·LLM 설정), 날씨·체감온도·캐시, 보온 계산 공통 모듈, 피드백, 성향, 프론트 틀 |
+| 정동화 | 회원, 설정, 장소·동선(카카오 지도, 요일·시간) |
+| 강민주 | 옷장, 보관 위치, 착용 기록, 옷 사진 AI 분류, 공통 기반 일부(응답 형식·예외 처리·에러 코드·시간 자동 기록) |
+| 최수인 | 추천, 챙길 것, 환절기 |
+
+### 담당 밖 파일 수정 규칙
+
+- **작업을 지시한 사람의 담당 도메인이 아닌 파일을 수정해야 하면, 수정하기 전에 먼저 물어봅니다.** 어떤 파일을, 왜, 어떻게 바꾸려는지 적고, 사용자가 허락한 뒤에만 수정합니다. 묻는 동안 해당 파일은 건드리지 않습니다.
+- 공통 영역도 같은 규칙입니다. `global/`, `build.gradle`, `application.properties`, **DB 스키마(`schema.sql`)**는 여러 사람이 함께 쓰므로 고치기 전에 물어봅니다. 테이블·컬럼을 바꾸면 모든 사람의 Mapper XML이 영향을 받습니다.
+- API 주소나 요청·응답 모양을 바꾸면 프론트도 영향을 받습니다. 바꾸기 전에 물어보고, 바꾼 내용을 작업 결과에 적습니다.
+- 지시한 사람이 누구인지(어느 담당인지) 알 수 없으면, 담당 밖 파일을 고쳐야 하는 시점에 먼저 물어봅니다.
+- 담당 도메인 안의 파일은 묻지 않고 작업해도 됩니다.
+
+## 4. 백엔드 구조
+
+### 계층
+
+`Controller → Service → Mapper(인터페이스) → Mapper XML(SQL)`
+
+- Controller: 요청·응답, 입력 검증, 로그인 사용자 꺼내기
+- Service: 로직, 트랜잭션
+- Mapper: `@Mapper` 인터페이스. XML은 `src/main/resources/mapper/{도메인}/` 아래
+- Domain: 테이블 한 줄에 맞는 객체. DTO: 요청·응답 모양(`XxxCreateRequest`, `XxxResponse`)
+
+### 반드시 지킬 것
+
+- **다른 도메인의 Mapper를 직접 부르지 않습니다.** 다른 도메인 데이터는 그 도메인의 Service로만 읽습니다. (예: 추천은 옷장 데이터를 `ClosetCandidateService`로만 읽음)
+- **도메인 패키지 안에 하위 폴더를 만들지 않습니다.** 파일을 바로 둡니다.
+- Mapper는 테이블 묶음 단위로 하나입니다. 부모 테이블과 딸린 테이블은 같은 Mapper가 맡습니다.
+  - PlaceMapper: places, place_schedules
+  - ClothesMapper: clothes, clothes_occasion_tags
+  - WearRecordMapper: wear_records, wear_record_items
+  - RecommendationMapper: recommendations, recommendation_items, recommendation_weathers
+  - FeedbackMapper: feedbacks, feedback_weathers, feedback_body_parts, feedback_weather_factors, feedback_day_contexts
+  - 나머지는 테이블 하나에 Mapper 하나
+
+### 패키지
+
+```
+src/main/java/com/mailook/
+├─ global/       공통 응답·예외·에러 코드, Security·JWT, MyBatis·Redis·AI(기능별 ChatClient)·Web 설정, 공용 ENUM(DayOfWeek, Situation, WeatherMoment)
+├─ user/         회원·설정
+├─ place/        장소·동선 (RouteService)
+├─ closet/       옷·보관 위치·후보 조회 (ClosetCandidateService)
+├─ wear/         착용 기록
+├─ recommend/    추천·챙길 것·환절기
+├─ weather/      날씨·바깥 시간 목록 (OutdoorMomentService)
+├─ warmth/       보온 계산 공통 모듈 (WarmthCalculator)
+├─ feedback/     피드백·편차 계산
+└─ preference/   성향·성향 갱신 도구
+```
+
+한 도메인만 쓰는 ENUM은 그 도메인 패키지에, 여러 도메인이 쓰는 ENUM은 `global`에 둡니다.
+
+## 5. API 규칙
+
+- 주소는 모두 `/api`로 시작합니다.
+- 응답은 공통 틀로 감쌉니다: `{ success, data, error: { code, message } }`
+- 회원가입·로그인을 빼고 모두 로그인이 필요합니다. **JWT는 httpOnly 쿠키**로 주고받습니다. Refresh Token은 설계에만 있고 구현하지 않습니다(refresh 쿠키도 굽지 않음).
+- **주소에 userId를 넣지 않습니다.** 토큰에서 꺼낸 로그인 사용자로 본인 데이터만 다룹니다.
+- 엔드포인트 목록과 응답 예시는 Notion "API 명세 초안"을 따릅니다.
+
+## 6. DB 규칙
+
+- 테이블 정의는 `src/main/resources/schema.sql` 하나입니다(ERD에서 만든 PostgreSQL DDL). 테이블·컬럼 이름과 타입은 이 파일을 기준으로 Mapper XML을 씁니다.
+- ENUM 컬럼에는 CHECK 제약이 걸려 있습니다. enum 값을 추가하거나 바꾸면 schema.sql의 CHECK도 같이 바꿔야 하므로, 먼저 물어봅니다.
+- id는 BIGSERIAL입니다. clothes는 `<selectKey order="BEFORE">SELECT nextval('clothes_clothes_id_seq')</selectKey>`로 id를 먼저 받습니다.
+
+- **삭제는 모두 soft delete**입니다. 행을 지우지 않고 `deleted_at`을 채웁니다. 조회 SQL에는 `deleted_at IS NULL` 조건을 꼭 넣습니다.
+  - 예외: 탈퇴 회원은 30일 뒤 배치로 연결 데이터까지 완전 삭제합니다. 그 30일 동안 같은 이메일로 재가입할 수 없습니다.
+  - 피드백 전 착용 기록 삭제와 옷 자리 태그 떼기를 soft로 할지는 아직 정하지 않았습니다(담당: 강민주).
+- 보관 위치를 지우면 그 위치에 있던 옷의 `storage_location_id`를 null로 비웁니다(= "보관 위치 자유").
+- places, storage_locations의 이름에는 UNIQUE를 걸지 않습니다.
+- 1:1 테이블(user_settings, preferences)은 `user_id`가 PK 겸 FK입니다. 회원가입 트랜잭션에서 users insert 직후 같이 만듭니다.
+- 같은 옷 여러 벌은 한 벌에 한 줄이고 `same_group_id`로 묶습니다. 새 옷은 `<selectKey order="BEFORE">`로 id를 먼저 받아 `clothes_id`와 `same_group_id`에 같은 값을 넣습니다.
+- 착용 기록은 하루 1개입니다. 피드백 전에는 덮어쓰고, **피드백이 저장되면 잠깁니다**(수정·삭제 불가).
+- 추천은 **버전으로 쌓습니다.** "다른 조합 보기"나 재추천은 새 줄이고, 이전 추천을 고치지 않습니다. 고르지 않은 버전도 지우지 않습니다(비선호 데이터).
+- 날씨 스냅샷(`weather_snapshots`)은 기상청 격자·시각 단위로 공유하고, **덮어쓰지도 지우지도 않습니다.** 같은 (nx, ny, forecast_at, kind)의 최신 값과 같으면 새 줄을 만들지 않고 재사용합니다.
+- 장소 주소는 동 단위까지만 저장하고, 위경도는 소수점 둘째 자리로 반올림해 저장합니다.
+
+### ENUM
+
+- DB는 varchar이고, **MyBatis 기본 `EnumTypeHandler`**가 enum 이름 ↔ 문자열을 바꿉니다. 별도 TypeHandler를 만들지 않습니다.
+- enum 상수 이름을 바꾸면 이미 저장된 데이터를 읽지 못합니다. 이름을 바꿔야 하면 DB 값도 같이 바꿉니다.
+- 순서 번호(ordinal) 방식은 쓰지 않습니다.
+- XML `test` 조건에서 enum을 문자열과 비교할 때는 `category != null and category.name() == 'OUTER'`처럼 씁니다.
+- 테스트 데이터의 enum 값은 대소문자까지 정확히 맞춥니다.
+
+## 7. 핵심 계산 (보온·보정)
+
+**계산은 코드만 합니다. LLM은 숫자를 계산하지 않습니다.** 보온 계산은 `warmth` 공통 모듈(`WarmthCalculator.calcOutfitWarmth`) 하나로 하고, 추천과 피드백이 같은 모듈을 씁니다. 각자 따로 구현하지 않습니다.
+
+- 조합 clo = 0.835 × (입은 옷 clo 합) + 0.16  (ISO 9920. 입는 옷 WEAR만 넣고, 챙길 것 BRING은 넣지 않음)
+- 적정 clo = (31 − 기준 온도) ÷ (0.155 × 활동량)
+  - 기준 온도 = 체감 − 보정 × 적용 비율
+  - 활동량: 바깥 115, 실내 60
+  - 최소 0.36(반팔+반바지). 그보다 더운 날은 통풍 높은 옷을 먼저 고릅니다.
+- 적용 비율 = min(1, |체감 − 20| ÷ 4)
+- 보정은 두 개입니다. 체감 20° 미만인 시점은 추위 보정(cold_offset), 20° 이상은 더위 보정(heat_offset). 범위 −5 ~ +5°, +면 따뜻하게.
+- 화면의 따뜻한 정도 10단계 = round(clo ÷ 0.08). 사용자가 단계를 고치면 clo = 단계 × 0.08.
+- 실내 검사: 아우터·액세서리를 뺀 조합이 장소 실내 온도(HOT 26° / NORMAL 22° / COLD 18°)와 ±3° 안이면 통과.
+- "오늘은 몸이 안 좋아요"(unwell): 그날 기준 온도를 4° 낮춰 계산하고, 그날 피드백은 학습에서 뺍니다.
+
+### 바깥 시간 목록 (OutdoorMomentService)
+
+- 장소 일정으로 그날 밖에 있는 순간을 만듭니다: DEPART(집 출발), MOVE(장소 간 이동, 도착 장소 날씨), STAY_OUTDOOR(OUTDOOR·MIXED 장소에 머무는 동안), RETURN(귀가, 집 날씨), DAYTIME(일정 없는 날, 집 근처 12~18시).
+- STAY_OUTDOOR와 DAYTIME은 그 시간 중 가장 시원한 시각과 가장 더운 시각, 두 줄을 남깁니다.
+- 적정 clo가 가장 높은 시점 하나가 **기준 시점**(`is_deciding`)입니다. 옷은 이 시점에 맞춰 고릅니다.
+- 시점별 체감 차이가 기준(예: 10°) 이상이면 일교차가 크다고 보고, 겉옷을 입은 상태는 가장 추운 시점에, 벗은 상태는 가장 더운 시점에 맞춥니다.
+
+### 피드백 → 보정
+
+- 입은 조합이 맞는 온도 = 31 − 0.155 × 활동량 × 조합 clo
+- 나에게 맞았던 온도 = 맞는 온도 − 4° × 선호 점수(더 따뜻하게 +1 / 이대로 0 / 더 가볍게 −1)
+- 이 피드백의 보정 = (기준 시점 체감 − 나에게 맞았던 온도) ÷ 적용 비율. 기준 시점 체감이 20° 미만이면 추위 보정, 이상이면 더위 보정으로 보냅니다.
+- 제외: 기준 시점 체감 18~22°(적용 비율 0.5 미만), unwell인 날, "오늘 안 나갔어요"인 날
+- 갱신: 같은 방향 3건 이상일 때만, 최근 10건의 중앙값으로, 한 번에 최대 1°까지 움직입니다.
+- 가입 초기값: 추위 덜 탐 −4 / 비슷 0 / 더 탐 +4, 더위 덜 탐 +4 / 비슷 0 / 더 탐 −4
+- 사용자가 직접 고친 값은 `*_locked = true`이고, AI가 덮어쓰지 않습니다. 바뀔 때마다 `preference_histories`에 남깁니다.
+
+## 8. LLM 사용 규칙
+
+- 기능별로 ChatClient를 나눕니다(옷 분류, 추천, 성향 요약).
+- **추천**: 코드가 후보 옷을 걸러 넘기고, LLM은 후보 안에서만 조합을 고릅니다. 후보 ID 밖의 응답은 거부합니다. LLM이 고른 조합은 `calcOutfitWarmth`로 검사하고, 맞지 않으면 이유를 붙여 2~3번 다시 요청하고, 그래도 안 되면 규칙 기반 추천으로 대신합니다.
+- LLM에는 장소 이름·동 단위 주소·머무는 시간, 옷의 자리 태그(외출복/출근용/운동복/격식 있는 자리, 없으면 일상), 반영 중인 유저 성향 문장을 맥락으로 넘깁니다. 자리 태그는 코드로 거르지 않습니다.
+- **피드백 저장**: 저장·관측 날씨 기록·편차 계산·갱신 필요 판단은 동기로 끝냅니다. LLM 성향 갱신(`updatePreference` Tool Calling)과 유저 성향 문장 정리는 비동기입니다.
+- 사용자가 남긴 말(memo)은 프롬프트에서 **지시가 아니라 데이터로만** 다룹니다.
+- 응답은 구조화 출력(정해진 JSON 형식)으로 받습니다. 챗봇처럼 자유 대화로 쓰지 않습니다.
+
+## 9. 하지 말 것
+
+- JPA, Repository를 추가하지 않습니다.
+- 다른 도메인의 Mapper를 직접 주입하지 않습니다.
+- LLM에게 clo·보정 계산을 맡기지 않습니다.
+- 보온 계산을 추천과 피드백에서 따로 구현하지 않습니다.
+- 날씨 스냅샷과 지난 추천 버전을 덮어쓰거나 지우지 않습니다.
+- 행을 실제로 DELETE하지 않습니다(탈퇴 배치 제외).
+- 상세 주소나 정확한 위경도를 저장하지 않습니다.
+- 비밀번호·키를 코드나 문서에 적지 않습니다. 환경변수로 받습니다(BCrypt로 비밀번호 저장).
+- main, develop 브랜치에 직접 커밋하지 않습니다.
+- 프론트 폴더의 파일을 고치지 않습니다. 필요하면 무엇이 필요한지 작업 결과에 적습니다.

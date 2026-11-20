@@ -1,13 +1,13 @@
-package com.maicloset;
+package com.mailook;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class MaiclosetBackendApplication {
+public class MailookApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(MaiclosetBackendApplication.class, args);
+		SpringApplication.run(MailookApplication.class, args);
 	}
 
 }
